@@ -423,8 +423,8 @@ import json
 
 BASE_URL = 'https://apigw.trendyol.com/integration/qna'
 ORDER_BASE_URL = 'https://api.trendyol.com/sapigw'
+import streamlit as st
 try:
-    import streamlit as st
     API_KEY = st.secrets["API_KEY"]
     API_SECRET_KEY = st.secrets["API_SECRET_KEY"]
     SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
@@ -1595,11 +1595,11 @@ def orijinal_isimle_degistir(themes, question_text):
 
 def process_data(start_date, end_date, status, size, orderByDirection):
     # TEST MODU EKLENDİ
-    test_mode = input("Test modu için 'e' tuşlayın, normal devam için Enter: ").strip().lower()
+    test_modu = st.checkbox("Test modunu etkinleştir")
     all_records_csv = 'all_records.csv'
     daily_records_csv = f"{datetime.now().strftime('%Y-%m-%d')}.csv"
 
-    if test_mode == 'e':
+    if test_modu:
         try:
             headers = ['Sıra No', 'Question Id', 'Text', 'Response', 'Analysis', 'orderNumber', 'Adı-Soyadı', 'Sınıf', 'model', 'quantity', 'Okul No', 'barcode', 'productName', 'orderStatus']
             for csv_path in [all_records_csv, daily_records_csv]:
@@ -1610,21 +1610,21 @@ def process_data(start_date, end_date, status, size, orderByDirection):
                         if f.tell() == 0:
                             writer.writerow(headers)
 
-            print("Created durumundaki siparişler çekiliyor...")
+            st.write("Created durumundaki siparişler çekiliyor...")
             orders_url = f"{ORDER_BASE_URL}/suppliers/{SUPPLIER_ID}/orders"
             params = {'status': 'Created', 'size': 200}
             orders_response = requests.get(orders_url, headers=HEADERS, params=params)
             orders_response.raise_for_status()
             orders_data = orders_response.json()
             all_orders_list = orders_data.get('content', [])
-            print(f"{len(all_orders_list)} adet Created sipariş bulundu.")
+            st.write(f"{len(all_orders_list)} adet Created sipariş bulundu.")
 
-            test_question_text = input("Test etmek istediğiniz soru metnini girin: ")
+            test_soru = st.text_area("Test etmek istediğiniz soru metnini girin:")
             question_id = "TEST"
-            print(f"\n--- SoruId: {question_id} ---")
-            print(f"--- SORULAN SORU ---\n{test_question_text}\n")
+            st.write(f"\n--- SoruId: {question_id} ---")
+            st.write(f"--- SORULAN SORU ---\n{test_soru}\n")
 
-            analyze_choice = input("Hangi analiz fonksiyonu? (yeni = AI, eski = Simple): ").strip().lower()
+            analyze_choice = st.radio("Hangi analiz fonksiyonu?", ("yeni = AI", "eski = Simple"))
             def _clean_json(analysis_result):
                 import json
                 if isinstance(analysis_result, str):
@@ -1643,11 +1643,11 @@ def process_data(start_date, end_date, status, size, orderByDirection):
                     data = analysis_result
                 return data
 
-            if analyze_choice == "eski":
-                analysis_result = analyze_question_with_openai_simple(test_question_text)
+            if analyze_choice == "eski = Simple":
+                analysis_result = analyze_question_with_openai_simple(test_soru)
                 data = analysis_result
             else:
-                analysis_result = analyze_question_with_openai(test_question_text)
+                analysis_result = analyze_question_with_openai(test_soru)
                 data = _clean_json(analysis_result)
 
             order_number = data.get("order_number")
@@ -1656,35 +1656,35 @@ def process_data(start_date, end_date, status, size, orderByDirection):
                 order_number = None
             themes = data.get("themes", [])
             # OpenAI'dan dönen themes listesini orijinal isimlerle değiştir
-            themes = orijinal_isimle_degistir(themes, test_question_text)
+            themes = orijinal_isimle_degistir(themes, test_soru)
             sinif = data.get("class", "") or data.get("school_number", "")
             # order_number yoksa veya "not provided" ise yeni mantık:
             if not order_number or (isinstance(order_number, str) and order_number.lower() == "not provided"):
-                print("Sipariş numarası bulunamadı. Soru metninden olası siparişler aranıyor...")
-                possible_orders = find_possible_orders_for_customer(test_question_text, all_orders_list)
+                st.write("Sipariş numarası bulunamadı. Soru metninden olası siparişler aranıyor...")
+                possible_orders = find_possible_orders_for_customer(test_soru, all_orders_list)
                 if len(possible_orders) == 1:
-                    sel = input(f"Soruyu soran müşterinin siparişi var: {possible_orders[0]}. Bu sipariş numarasını kullanmak ister misiniz? (E/H): ")
-                    if sel.strip().lower() == 'e':
+                    sel = st.radio(f"Soruyu soran müşterinin siparişi var: {possible_orders[0]}. Bu sipariş numarasını kullanmak ister misiniz?", ("Evet", "Hayır"))
+                    if sel == "Evet":
                         order_number = possible_orders[0]
                     else:
-                        order_number = input("Lütfen sipariş numarasını manuel girin: ")
+                        order_number = st.text_input("Lütfen sipariş numarasını manuel girin:")
                 elif len(possible_orders) > 1:
-                    print("Birden fazla olası sipariş bulundu:")
+                    st.write("Birden fazla olası sipariş bulundu:")
                     for idx, ono in enumerate(possible_orders, 1):
-                        print(f"{idx}. {ono}")
-                    sel = input("Kullanmak istediğiniz siparişi seçin (numara girin) veya boş bırakıp atlayın: ")
-                    if sel.isdigit() and 1 <= int(sel) <= len(possible_orders):
+                        st.write(f"{idx}. {ono}")
+                    sel = st.number_input("Kullanmak istediğiniz siparişi seçin (numara girin) veya boş bırakıp atlayın:", min_value=1, max_value=len(possible_orders), step=1)
+                    if sel and 1 <= sel <= len(possible_orders):
                         order_number = possible_orders[int(sel)-1]
                     else:
-                        order_number = input("Lütfen sipariş numarasını manuel girin veya boş bırakın (atla): ")
+                        order_number = st.text_input("Lütfen sipariş numarasını manuel girin veya boş bırakın (atla):")
                 else:
-                    order_number = input(f"Soru: {test_question_text}\nSipariş Numarası bulunamadı. Lütfen sipariş numarasını girin: ")
+                    order_number = st.text_input(f"Soru: {test_soru}\nSipariş Numarası bulunamadı. Lütfen sipariş numarasını girin:")
             question_id = "TEST"
 
             # --- Sipariş detaylarını çek ---
             barcode, product_name, order_status, quantity, product_details = get_order_details(order_number, all_orders_cache=all_orders_list, allow_api_fallback=True)
             if not product_details or product_details == 'Unknown':
-                print("Sipariş bulunamadı veya ürün detayı çekilemedi!")
+                st.write("Sipariş bulunamadı veya ürün detayı çekilemedi!")
                 return
 
             # Barcode-model eşleştirme tablosu oluştur
@@ -1714,12 +1714,13 @@ def process_data(start_date, end_date, status, size, orderByDirection):
             if unmatched_names:
                 yanit += "\n(Not: Eşleşmeyen isimler kayıt edilmedi: " + ", ".join(unmatched_names) + ")"
 
-            print("\n--- OLUŞTURULAN YANIT ---\n", yanit)
+            st.write("\n--- OLUŞTURULAN YANIT ---\n")
+            st.write(yanit)
             # Her bir kayıt için kayıt işlemini uygula (ör: insert_db(record) veya csv.append(record) vs.)
             for rec in records:
                 # rec["name"] sadece ismi içermeli (merge_name_class_school KULLANILMAZ!)
                 record_row = [
-                    1, question_id, test_question_text, yanit, analysis_result,
+                    1, question_id, test_soru, yanit, analysis_result,
                     rec["order_number"], rec["name"], rec["class"], rec["theme"], rec["adet"],
                     rec["school_number"], rec["barcode"], '', 'Created'
                 ]
@@ -1727,7 +1728,7 @@ def process_data(start_date, end_date, status, size, orderByDirection):
                 update_csv_record(daily_records_csv, record_row)
             return
         except Exception as e:
-            print(f"Test modunda bir hata oluştu: {e}")
+            st.write(f"Test modunda bir hata oluştu: {e}")
             return
 
     # Normal mod
@@ -1877,14 +1878,9 @@ def process_data(start_date, end_date, status, size, orderByDirection):
 
 # Tarih aralığını ve durumu belirleyin
 # Kullanıcıdan sıralama yönü seçeneğini alma
-order_by_direction_input = input("Sıralama yönünü seçin (yeni = DESC, eski = ASC): ").strip().lower()
-if order_by_direction_input == 'yeni':
-    orderByDirection = 'DESC'
-elif order_by_direction_input == 'eski':
-    orderByDirection = 'ASC'
-else:
-    print("Geçersiz giriş! Varsayılan olarak yeniden (DESC) seçildi.")
-    orderByDirection = 'DESC'
+import streamlit as st
+sirala = st.radio("Sıralama yönünü seçin:", ["DESC", "ASC"])
+orderByDirection = sirala
 
 # Tarih aralığını ve durumu belirleyin
 start_date = to_milliseconds(datetime.now(timezone.utc) - timedelta(days=7))
