@@ -1,28 +1,45 @@
 import streamlit as st
-import os
-import openai
-openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-API_KEY = st.secrets.get("API_KEY") or os.getenv("API_KEY")
-API_SECRET_KEY = st.secrets.get("API_SECRET_KEY") or os.getenv("API_SECRET_KEY")
-SUPPLIER_ID = st.secrets.get("SUPPLIER_ID") or os.getenv("SUPPLIER_ID")
 import json
-import kalemSoru17temmuz
-from kalemSoru17temmuz import process_order_response, barcode_model_lookup
+import kalemSoru17temmuz as ks17
+import openai
+
+# Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+API_KEY = st.secrets["API_KEY"]
+API_SECRET_KEY = st.secrets["API_SECRET_KEY"]
+SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
 
 st.title("Kalem Soru Analiz Uygulaması")
 
-soru_metni = st.text_area("Lütfen JSON formatında sipariş bilgisini girin:")
+# Sıralama yönü
+siralama_secimi = st.radio("Sıralama yönünü seçin:", ("Yeniden eski (DESC)", "Eskiden yeni (ASC)"))
+siralama = "DESC" if siralama_secimi == "Yeniden eski (DESC)" else "ASC"
 
+# Test modu
+test_modu = st.checkbox("Test modunu etkinleştir", value=False)
+
+# Soru metni
+soru_metni = st.text_area("Müşteri mesajını girin", height=150)
+
+# Adet belirleme
 adet = st.number_input("Adet:", min_value=1, step=1, value=1)
 
 if st.button("Analiz Et"):
-    if soru_metni.strip() == "":
-        st.warning("Lütfen soru metni girin.")
+    if not soru_metni.strip():
+        st.warning("Lütfen müşteri mesajını girin.")
     else:
         try:
-            json_data = json.loads(soru_metni)
-            sonuc = process_order_response(json_data, barcode_model_lookup, adet)
-            st.success("İşlem Sonucu:")
-            st.json(sonuc)
+            st.info("Analiz ediliyor...")
+            json_cevap = ks17.analiz_fonksiyonu(soru_metni, siralama, test_modu, adet)
+            st.json(json_cevap)
+
+            # Onaylama
+            onay = st.radio("Bu yanıtı onaylıyor musunuz?", ("Evet", "Hayır", "Düzenle"))
+            if onay == "Evet":
+                st.success("Yanıt onaylandı.")
+            elif onay == "Hayır":
+                st.warning("Yanıt reddedildi.")
+            else:
+                st.info("Lütfen düzenleme yapınız.")
         except Exception as e:
             st.error(f"Hata: {str(e)}")
