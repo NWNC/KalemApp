@@ -412,9 +412,10 @@ def isim_reg_hybrid(openai_themes, question_text, openai_class=""):
 
 
 # Bu kod, isimleri sırayla ürünlere dağıtır ve biterse Unknown yazar.
-import requests
-import openai
 
+import streamlit as st
+import openai
+import requests
 import base64
 import csv
 from datetime import datetime, timedelta, timezone
@@ -422,16 +423,16 @@ import os
 import re
 import json
 
+# API key and secret assignments via Streamlit secrets
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+API_KEY = st.secrets["API_KEY"]
+API_SECRET_KEY = st.secrets["API_SECRET_KEY"]
+SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
+
 BASE_URL = 'https://apigw.trendyol.com/integration/qna'
 ORDER_BASE_URL = 'https://api.trendyol.com/sapigw'
-import streamlit as st
 from openai import OpenAI, OpenAIError
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
-import os
-import streamlit as st
-API_KEY = os.getenv("API_KEY") or st.secrets.get("API_KEY")
-API_SECRET_KEY = os.getenv("API_SECRET_KEY") or st.secrets.get("API_SECRET_KEY")
-SUPPLIER_ID = os.getenv("SUPPLIER_ID") or st.secrets.get("SUPPLIER_ID")
 USER_AGENT = f"{SUPPLIER_ID} - SelfIntegration"
 auth_header = base64.b64encode(f"{API_KEY}:{API_SECRET_KEY}".encode()).decode()
 HEADERS = {
