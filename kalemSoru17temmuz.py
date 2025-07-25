@@ -64,25 +64,111 @@ def process_order_response(order_response, barcode_model_lookup, adet=1, barcode
     no_theme_classes = [entry.get('class', '') for entry in no_theme_entries if entry.get('name', '').strip() not in used_names]
     no_theme_school_numbers = [entry.get('school_number', '') for entry in no_theme_entries if entry.get('name', '').strip() not in used_names]
 
-    if len(remaining_barcodes) == 1 and len(no_theme_names) > 0:
+    # --- Özel mantık: quantity > isim sayısı ise kullanıcıya sor ---
+    if len(remaining_barcodes) == 1:
         b, m = remaining_barcodes[0]
         try:
-            adet_value = int(adet)
-        except:
-            adet_value = 1
-        for idx, name in enumerate(no_theme_names):
-            matched_names.append((name, m, no_theme_classes[idx] or class_info, no_theme_school_numbers[idx] or school_number))
-            records.append({
-                "order_number": order_number,
-                "name": name,
-                "theme": m,
-                "class": no_theme_classes[idx] or class_info,
-                "school_number": no_theme_school_numbers[idx] or school_number,
-                "adet": barcode_quantity_lookup.get(b, 1) if barcode_quantity_lookup else 1,
-                "barcode": b
-            })
-            used_names.add(name)
-        return records, matched_names, unmatched_names
+            quantity = int(barcode_quantity_lookup.get(b, 1) if barcode_quantity_lookup else 1)
+        except Exception:
+            quantity = 1
+        name_count = len(no_theme_names)
+        if quantity > name_count and name_count > 0:
+            print(
+                f"Bu barkod için isim sayısı ürün adedinden az. \n"
+                f"- Aynı ismi {quantity} kere eklememi ister misiniz (E)?  \n"
+                f"- Farklı bir isim mi eklemek istiyorsunuz (F)?  \n"
+                f"- Atlamak mı istersiniz (A)?"
+            )
+            secim = ""
+            while secim not in ("E", "F", "A"):
+                secim = input("Seçiminiz (E/F/A): ").strip().upper()
+            if secim == "E":
+                # Eksik kalan kayıtlar için ilk ismi tekrar et
+                for idx in range(quantity):
+                    if idx < name_count:
+                        name = no_theme_names[idx]
+                        name_class = no_theme_classes[idx] if idx < len(no_theme_classes) else class_info
+                        name_school = no_theme_school_numbers[idx] if idx < len(no_theme_school_numbers) else school_number
+                    else:
+                        name = no_theme_names[0]  # ilk ismi tekrar kullan
+                        name_class = no_theme_classes[0] if len(no_theme_classes) > 0 else class_info
+                        name_school = no_theme_school_numbers[0] if len(no_theme_school_numbers) > 0 else school_number
+                    matched_names.append((name, m, name_class or class_info, name_school or school_number))
+                    records.append({
+                        "order_number": order_number,
+                        "name": name,
+                        "theme": m,
+                        "class": name_class or class_info,
+                        "school_number": name_school or school_number,
+                        "adet": barcode_quantity_lookup.get(b, 1) if barcode_quantity_lookup else 1,
+                        "barcode": b
+                    })
+                    used_names.add(name)
+                return records, matched_names, unmatched_names
+            elif secim == "F":
+                # Kullanıcıdan eksik her kayıt için isim iste
+                new_names = list(no_theme_names)
+                new_classes = list(no_theme_classes)
+                new_schools = list(no_theme_school_numbers)
+                for idx in range(quantity - name_count):
+                    yeni_isim = input(f"{idx+1}. eksik isim (toplam {quantity} olacak): ").strip()
+                    if not yeni_isim:
+                        yeni_isim = f"Unknown{idx+1}"
+                    yeni_class = input(f"{idx+1}. isim için sınıf (boş bırakabilirsiniz): ").strip()
+                    yeni_school = input(f"{idx+1}. isim için okul no (boş bırakabilirsiniz): ").strip()
+                    new_names.append(yeni_isim)
+                    new_classes.append(yeni_class)
+                    new_schools.append(yeni_school)
+                for idx in range(quantity):
+                    name = new_names[idx]
+                    name_class = new_classes[idx] if idx < len(new_classes) else class_info
+                    name_school = new_schools[idx] if idx < len(new_schools) else school_number
+                    matched_names.append((name, m, name_class or class_info, name_school or school_number))
+                    records.append({
+                        "order_number": order_number,
+                        "name": name,
+                        "theme": m,
+                        "class": name_class or class_info,
+                        "school_number": name_school or school_number,
+                        "adet": barcode_quantity_lookup.get(b, 1) if barcode_quantity_lookup else 1,
+                        "barcode": b
+                    })
+                    used_names.add(name)
+                return records, matched_names, unmatched_names
+            elif secim == "A":
+                # Sadece mevcut isim kadar kayıt oluştur
+                for idx, name in enumerate(no_theme_names):
+                    name_class = no_theme_classes[idx] if idx < len(no_theme_classes) else class_info
+                    name_school = no_theme_school_numbers[idx] if idx < len(no_theme_school_numbers) else school_number
+                    matched_names.append((name, m, name_class or class_info, name_school or school_number))
+                    records.append({
+                        "order_number": order_number,
+                        "name": name,
+                        "theme": m,
+                        "class": name_class or class_info,
+                        "school_number": name_school or school_number,
+                        "adet": barcode_quantity_lookup.get(b, 1) if barcode_quantity_lookup else 1,
+                        "barcode": b
+                    })
+                    used_names.add(name)
+                return records, matched_names, unmatched_names
+        else:
+            # Normal mantık, isim kadar kayıt oluştur
+            for idx, name in enumerate(no_theme_names):
+                name_class = no_theme_classes[idx] if idx < len(no_theme_classes) else class_info
+                name_school = no_theme_school_numbers[idx] if idx < len(no_theme_school_numbers) else school_number
+                matched_names.append((name, m, name_class or class_info, name_school or school_number))
+                records.append({
+                    "order_number": order_number,
+                    "name": name,
+                    "theme": m,
+                    "class": name_class or class_info,
+                    "school_number": name_school or school_number,
+                    "adet": barcode_quantity_lookup.get(b, 1) if barcode_quantity_lookup else 1,
+                    "barcode": b
+                })
+                used_names.add(name)
+            return records, matched_names, unmatched_names
 
     # Klasik dağıtım (adet = 1 ise kalanlara sırayla dağıtılır)
     for idx, ((b, m), name) in enumerate(zip(remaining_barcodes, no_theme_names)):
@@ -337,9 +423,16 @@ import json
 
 BASE_URL = 'https://apigw.trendyol.com/integration/qna'
 ORDER_BASE_URL = 'https://api.trendyol.com/sapigw'
-API_KEY = 'xBxAeqJeAZuDrh5gLLzk'
-API_SECRET_KEY = 'UYgkHUKzxMXEKi7SQyeN'
-SUPPLIER_ID = '223116'
+try:
+    import streamlit as st
+    API_KEY = st.secrets["API_KEY"]
+    API_SECRET_KEY = st.secrets["API_SECRET_KEY"]
+    SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
+except:
+    import os
+    API_KEY = os.getenv("API_KEY")
+    API_SECRET_KEY = os.getenv("API_SECRET_KEY")
+    SUPPLIER_ID = os.getenv("SUPPLIER_ID")
 USER_AGENT = f"{SUPPLIER_ID} - SelfIntegration"
 auth_header = base64.b64encode(f"{API_KEY}:{API_SECRET_KEY}".encode()).decode()
 HEADERS = {
@@ -348,8 +441,10 @@ HEADERS = {
     'User-Agent': USER_AGENT
 }
 
-OPENAI_API_KEY = 'sk-proj-4VQumUf4ivok2vF7rutjT3BlbkFJ5bJoNlHkyTfofKRkBvvC'
-openai.api_key = OPENAI_API_KEY
+try:
+    openai.api_key = st.secrets["OPENAI_API_KEY"]
+except:
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # Tarihi milisaniye cinsinden alma fonksiyonu
 def to_milliseconds(date):
