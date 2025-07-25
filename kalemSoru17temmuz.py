@@ -413,7 +413,7 @@ def isim_reg_hybrid(openai_themes, question_text, openai_class=""):
 
 # Bu kod, isimleri sırayla ürünlere dağıtır ve biterse Unknown yazar.
 import requests
-import openai
+
 import base64
 import csv
 from datetime import datetime, timedelta, timezone
@@ -424,15 +424,10 @@ import json
 BASE_URL = 'https://apigw.trendyol.com/integration/qna'
 ORDER_BASE_URL = 'https://api.trendyol.com/sapigw'
 import streamlit as st
-try:
-    API_KEY = st.secrets["API_KEY"]
-    API_SECRET_KEY = st.secrets["API_SECRET_KEY"]
-    SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
-except:
-    import os
-    API_KEY = os.getenv("API_KEY")
-    API_SECRET_KEY = os.getenv("API_SECRET_KEY")
-    SUPPLIER_ID = os.getenv("SUPPLIER_ID")
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+API_KEY = st.secrets["API_KEY"]
+API_SECRET_KEY = st.secrets["API_SECRET_KEY"]
+SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
 USER_AGENT = f"{SUPPLIER_ID} - SelfIntegration"
 auth_header = base64.b64encode(f"{API_KEY}:{API_SECRET_KEY}".encode()).decode()
 HEADERS = {
@@ -441,10 +436,10 @@ HEADERS = {
     'User-Agent': USER_AGENT
 }
 
-try:
-    openai.api_key = st.secrets["OPENAI_API_KEY"]
-except:
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# --- OpenAI client setup ---
+from openai import OpenAI, OpenAIError
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # Tarihi milisaniye cinsinden alma fonksiyonu
 def to_milliseconds(date):
@@ -477,7 +472,7 @@ def get_customer_questions(start_date, end_date, status, size, orderByDirection)
 # Soruları analiz etme fonksiyonu
 def analyze_question_with_openai(question_text):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": """
@@ -1207,8 +1202,8 @@ sipariş numaram 10347432584 dinozor merve sinanoğulları alya sinanoğulları 
                 {"role": "user", "content": question_text}
             ]
         )
-        content = response.choices[0].message['content'].strip()
-    except openai.error.OpenAIError as e:
+        content = response.choices[0].message.content.strip()
+    except OpenAIError as e:
         print(f"OpenAI API hatası oluştu: {e}")
         content = "{}"  # varsayılan boş JSON yanıt
     print(f"[DEBUG] OpenAI raw response: {content}")
@@ -1879,8 +1874,7 @@ def process_data(start_date, end_date, status, size, orderByDirection):
 # Tarih aralığını ve durumu belirleyin
 # Kullanıcıdan sıralama yönü seçeneğini alma
 import streamlit as st
-sirala = st.radio("Sıralama yönünü seçin:", ["DESC", "ASC"])
-orderByDirection = sirala
+orderByDirection = st.selectbox("Sıralama yönünü seçin", options=["DESC", "ASC"])
 
 # Tarih aralığını ve durumu belirleyin
 start_date = to_milliseconds(datetime.now(timezone.utc) - timedelta(days=7))

@@ -1,10 +1,10 @@
 import streamlit as st
 import os
 import openai
-openai.api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
-API_KEY = st.secrets.get("API_KEY", os.getenv("API_KEY"))
-API_SECRET_KEY = st.secrets.get("API_SECRET_KEY", os.getenv("API_SECRET_KEY"))
-SUPPLIER_ID = st.secrets.get("SUPPLIER_ID", os.getenv("SUPPLIER_ID"))
+openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+API_KEY = st.secrets.get("API_KEY") or os.getenv("API_KEY")
+API_SECRET_KEY = st.secrets.get("API_SECRET_KEY") or os.getenv("API_SECRET_KEY")
+SUPPLIER_ID = st.secrets.get("SUPPLIER_ID") or os.getenv("SUPPLIER_ID")
 import json
 import kalemSoru17temmuz
 from kalemSoru17temmuz import process_order_response, barcode_model_lookup
