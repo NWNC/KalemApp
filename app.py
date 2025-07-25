@@ -6,6 +6,7 @@ API_KEY = st.secrets.get("API_KEY", os.getenv("API_KEY"))
 API_SECRET_KEY = st.secrets.get("API_SECRET_KEY", os.getenv("API_SECRET_KEY"))
 SUPPLIER_ID = st.secrets.get("SUPPLIER_ID", os.getenv("SUPPLIER_ID"))
 import json
+import kalemSoru17temmuz
 from kalemSoru17temmuz import process_order_response, barcode_model_lookup
 
 st.title("Kalem Soru Analiz Uygulaması")
