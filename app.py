@@ -11,12 +11,6 @@ SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
 
 st.title("Kalem Soru Analiz Uygulaması")
 
-# Sıralama yönü
-siralama_secimi = st.radio("Sıralama yönünü seçin:", ("Yeniden eski (DESC)", "Eskiden yeni (ASC)"))
-siralama = "DESC" if siralama_secimi == "Yeniden eski (DESC)" else "ASC"
-
-# Test modu
-test_modu = st.checkbox("Test modunu etkinleştir", value=False)
 
 # Soru metni
 soru_metni = st.text_area("Müşteri mesajını girin", height=150)
@@ -30,7 +24,7 @@ if st.button("Analiz Et"):
     else:
         try:
             st.info("Analiz ediliyor...")
-            json_cevap = ks17.analiz_fonksiyonu(soru_metni, siralama, test_modu, adet)
+            json_cevap = ks17.analiz_fonksiyonu(soru_metni, "DESC", False, adet)
             st.json(json_cevap)
 
             # Onaylama
