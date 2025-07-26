@@ -1711,18 +1711,24 @@ def process_data(start_date, end_date, status, size, orderByDirection):
             if unmatched_names:
                 yanit += "\n(Not: Eşleşmeyen isimler kayıt edilmedi: " + ", ".join(unmatched_names) + ")"
 
-            st.write("\n--- OLUŞTURULAN YANIT ---\n")
-            st.write(yanit)
-            # Her bir kayıt için kayıt işlemini uygula (ör: insert_db(record) veya csv.append(record) vs.)
-            for rec in records:
-                # rec["name"] sadece ismi içermeli (merge_name_class_school KULLANILMAZ!)
-                record_row = [
-                    1, question_id, test_soru, yanit, analysis_result,
-                    rec["order_number"], rec["name"], rec["class"], rec["theme"], rec["adet"],
-                    rec["school_number"], rec["barcode"], '', 'Created'
-                ]
-                update_csv_record(all_records_csv, record_row)
-                update_csv_record(daily_records_csv, record_row)
+            st.markdown(f"**Oluşturulan Yanıt:**\n\n{yanit}")
+            onay = st.radio("Bu yanıtı onaylıyor musunuz?", ("Evet", "Hayır", "Durdur"))
+            if onay == "Evet":
+                st.success("Yanıt onaylandı.")
+                for rec in records:
+                    record_row = [
+                        1, question_id, test_soru, yanit, analysis_result,
+                        rec["order_number"], rec["name"], rec["class"], rec["theme"], rec["adet"],
+                        rec["school_number"], rec["barcode"], '', 'Created'
+                    ]
+                    update_csv_record(all_records_csv, record_row)
+                    update_csv_record(daily_records_csv, record_row)
+            elif onay == "Hayır":
+                st.warning("Yanıt reddedildi. Lütfen tekrar deneyin.")
+                st.stop()
+            elif onay == "Durdur":
+                st.error("İşlem kullanıcı tarafından durduruldu.")
+                st.stop()
             return
         except Exception as e:
             st.write(f"Test modunda bir hata oluştu: {e}")
@@ -1775,55 +1781,55 @@ def process_data(start_date, end_date, status, size, orderByDirection):
             if not order_number or (isinstance(order_number, str) and order_number.lower() == "not provided"):
                 print("Sipariş numarası bulunamadı. Soru metninden olası siparişler aranıyor...")
                 possible_orders = find_possible_orders_for_customer(question_text, all_orders_list if all_orders_list else [])
+                order_number_st = None
                 if len(possible_orders) == 1:
-                    sel = input(f"Soruyu soran müşterinin siparişi var: {possible_orders[0]}. Bu sipariş numarasını kullanmak ister misiniz? (E/H): ")
-                    if sel.strip().lower() == 'e':
+                    order_number_st = st.radio(f"Soruyu soran müşterinin siparişi var: {possible_orders[0]}. Bu sipariş numarasını kullanmak ister misiniz?", ("Evet", "Hayır"))
+                    if order_number_st == "Evet":
                         order_number = possible_orders[0]
                     else:
-                        order_number = input("Lütfen sipariş numarasını manuel girin: ")
+                        order_number = st.text_input("Lütfen sipariş numarasını manuel girin:")
                 elif len(possible_orders) > 1:
-                    print("Birden fazla olası sipariş bulundu:")
+                    st.write("Birden fazla olası sipariş bulundu:")
                     for idx, ono in enumerate(possible_orders, 1):
-                        print(f"{idx}. {ono}")
-                    sel = input("Kullanmak istediğiniz siparişi seçin (numara girin) veya boş bırakıp atlayın: ")
-                    if sel.isdigit() and 1 <= int(sel) <= len(possible_orders):
+                        st.write(f"{idx}. {ono}")
+                    sel = st.number_input("Kullanmak istediğiniz siparişi seçin (numara girin) veya boş bırakıp atlayın:", min_value=1, max_value=len(possible_orders), step=1)
+                    if sel and 1 <= sel <= len(possible_orders):
                         order_number = possible_orders[int(sel)-1]
                     else:
-                        order_number = input("Lütfen sipariş numarasını manuel girin veya boş bırakın (atla): ")
+                        order_number = st.text_input("Lütfen sipariş numarasını manuel girin veya boş bırakın (atla):")
                 else:
-                    order_number = input(f"Soru: {question_text}\nSipariş Numarası bulunamadı. Lütfen sipariş numarasını girin: ")
+                    order_number = st.text_input(f"Soru: {question_text}\nSipariş Numarası bulunamadı. Lütfen sipariş numarasını girin:")
             barcode, product_name, order_status, quantity, product_details = get_order_details(order_number, all_orders_cache=all_orders_list, allow_api_fallback=True)
             if barcode == 'Unknown' or product_name == 'Unknown' or order_status == 'Unknown':
                 print(f"Sipariş detayları alınamadı: Order Number: {order_number}")
                 if customer_id:
                     possible_orders = find_orders_by_customer_id(customer_id, all_orders_list if all_orders_list else [])
                     if possible_orders:
-                        print(f"Soruyu soran müşterinin {len(possible_orders)} olası siparişi bulundu (customerId eşleşmesi):")
+                        st.write(f"Soruyu soran müşterinin {len(possible_orders)} olası siparişi bulundu (customerId eşleşmesi):")
                         for idx, ono in enumerate(possible_orders, 1):
-                            print(f"{idx}. {ono}")
-                        while True:
-                            sel = input("Kullanmak istediğiniz siparişi seçin (numara girin) veya sipariş numarası girin ya da boş bırakıp atlayın: ")
-                            selected_order = ""
-                            if sel.isdigit() and 1 <= int(sel) <= len(possible_orders):
-                                selected_order = possible_orders[int(sel)-1]
-                            elif sel.strip():
-                                selected_order = sel.strip()
-                            else:
-                                print("Sipariş bulunamadı, atlanıyor.")
-                                break
+                            st.write(f"{idx}. {ono}")
+                        sel = st.number_input("Kullanmak istediğiniz siparişi seçin (numara girin) veya sipariş numarası girin ya da boş bırakıp atlayın:", min_value=1, max_value=len(possible_orders), step=1)
+                        selected_order = ""
+                        if sel and 1 <= sel <= len(possible_orders):
+                            selected_order = possible_orders[int(sel)-1]
+                        else:
+                            selected_order = st.text_input("Sipariş numarası girin veya boş bırakıp atlayın:")
+                        if selected_order:
                             barcode, product_name, order_status, quantity, product_details = get_order_details(selected_order, all_orders_cache=all_orders_list, allow_api_fallback=True)
                             if barcode == 'Unknown' or product_name == 'Unknown' or order_status == 'Unknown':
-                                print(f"Seçilen siparişin detayları alınamadı: {selected_order}. Tekrar deneyin veya boş bırakıp atlayın.")
+                                st.warning(f"Seçilen siparişin detayları alınamadı: {selected_order}. Tekrar deneyin veya boş bırakıp atlayın.")
                                 continue
                             order_number = selected_order
-                            break
+                        else:
+                            st.warning("Sipariş bulunamadı, atlanıyor.")
+                            continue
                         if barcode == 'Unknown' or product_name == 'Unknown' or order_status == 'Unknown':
                             continue
                     else:
-                        print("CustomerId ile eşleşen sipariş bulunamadı.")
+                        st.warning("CustomerId ile eşleşen sipariş bulunamadı.")
                         continue
                 else:
-                    print("CustomerId bilinmiyor, atlanıyor.")
+                    st.warning("CustomerId bilinmiyor, atlanıyor.")
                     continue
 
             barcode_model_lookup = {p['barcode']: check_and_print_models(p['barcode']) for p in product_details}
@@ -1850,39 +1856,31 @@ def process_data(start_date, end_date, status, size, orderByDirection):
             if unmatched_names:
                 yanit += "\n(Not: Eşleşmeyen isimler kayıt edilmedi: " + ", ".join(unmatched_names) + ")"
 
-            print("\n--- OLUŞTURULAN YANIT ---\n", yanit)
-            for rec in records:
-                # rec["name"] sadece ismi içermeli (merge_name_class_school KULLANILMAZ!)
-                record_row = [
-                    i, question_id, question_text, yanit, analysis_result,
-                    rec["order_number"], rec["name"], rec["class"], rec["theme"], rec["adet"],
-                    rec["school_number"], rec["barcode"], '', order_status
-                ]
-                approval = input("Bu yanıtı onaylıyor musunuz? (E/H/D): ")
-                if approval.lower() == 'e':
+            st.markdown(f"**Oluşturulan Yanıt:**\n\n{yanit}")
+            onay = st.radio("Bu yanıtı onaylıyor musunuz?", ("Evet", "Hayır", "Durdur"), key=f"onay_{question_id}_{i}")
+            if onay == "Evet":
+                st.success("Yanıt onaylandı.")
+                for rec in records:
+                    record_row = [
+                        i, question_id, question_text, yanit, analysis_result,
+                        rec["order_number"], rec["name"], rec["class"], rec["theme"], rec["adet"],
+                        rec["school_number"], rec["barcode"], '', order_status
+                    ]
                     send_answer_to_customer(question_id, yanit)
                     update_csv_record(all_records_csv, record_row)
                     update_csv_record(daily_records_csv, record_row)
-                elif approval.lower() == 'h':
-                    print("Yanıt gönderilmedi.")
-                    continue
-                elif approval.lower() == 'd':
-                    edited_response = input("Düzeltilmiş yanıtınızı girin: ")
-                    send_answer_to_customer(question_id, edited_response)
-                    record_row[3] = edited_response
-                    update_csv_record(all_records_csv, record_row)
-                    update_csv_record(daily_records_csv, record_row)
+            elif onay == "Hayır":
+                st.warning("Yanıt reddedildi. Lütfen tekrar deneyin.")
+                st.stop()
+            elif onay == "Durdur":
+                st.error("İşlem kullanıcı tarafından durduruldu.")
+                st.stop()
 
 # Tarih aralığını ve durumu belirleyin
 # Kullanıcıdan sıralama yönü seçeneğini alma
-import streamlit as st
 orderByDirection = st.selectbox("Sıralama yönünü seçin", options=["DESC", "ASC"])
-
-# Tarih aralığını ve durumu belirleyin
 start_date = to_milliseconds(datetime.now(timezone.utc) - timedelta(days=7))
 end_date = to_milliseconds(datetime.now(timezone.utc))
 status = 'WAITING_FOR_ANSWER'
 size = 50
-
-# Verileri işleyin ve dosya oluşturun
 process_data(start_date, end_date, status, size, orderByDirection)
