@@ -1717,25 +1717,41 @@ def process_data(start_date, end_date, status, size, orderByDirection):
             if unmatched_names:
                 yanit += "\n(Not: Eşleşmeyen isimler kayıt edilmedi: " + ", ".join(unmatched_names) + ")"
 
-            st.markdown(f"**Oluşturulan Yanıt:**\n\n{yanit}")
-            onay = st.radio("Bu yanıtı onaylıyor musunuz?", ("Evet", "Hayır", "Durdur"), key=f"onay_{question_id}_{i}")
-            if onay == "Evet":
-                st.success("Yanıt onaylandı.")
-                for rec in records:
-                    record_row = [
-                        i, question_id, question_text, yanit, analysis_result,
-                        rec["order_number"], rec["name"], rec["class"], rec["theme"], rec["adet"],
-                        rec["school_number"], rec["barcode"], '', order_status
-                    ]
-                    send_answer_to_customer(question_id, yanit)
-                    update_csv_record(all_records_csv, record_row)
-                    update_csv_record(daily_records_csv, record_row)
-            elif onay == "Hayır":
-                st.warning("Yanıt reddedildi. Lütfen tekrar deneyin.")
-                st.stop()
-            elif onay == "Durdur":
-                st.error("İşlem kullanıcı tarafından durduruldu.")
-                st.stop()
+            # --- Onaylama ve kayıt/ret/durdurma mantığı kaldırıldı. Bunun yerine aşağıda yeni mantık eklenecek. ---
+
+            # --- YANIT ONAY/RED/LOG SİSTEMİ ---
+            if "yanit" in locals():
+                st.write(yanit)
+                user_input = st.text_input("Bu yanıtı onaylıyor musunuz? (E/H/D)", key="onay_input")
+                import csv
+                from datetime import datetime
+                import os
+                # CSV log dosyası için başlıklar
+                log_headers = ['timestamp', 'soru_id', 'soru_metni', 'siparis_no', 'tema', 'isim', 'yanit']
+                # Her matched_name için bir kayıt oluştur
+                if user_input and user_input.strip().upper() in ("E", "H", "D"):
+                    now = datetime.now().isoformat()
+                    for isim, tema, sinif, okul_no in matched_names:
+                        row = [
+                            now,
+                            question_id,
+                            question_text,
+                            order_number,
+                            tema,
+                            isim,
+                            yanit
+                        ]
+                        if user_input.strip().upper() == "E":
+                            log_file = "yanit_log.csv"
+                        else:
+                            log_file = "red_log.csv"
+                        file_exists = os.path.exists(log_file)
+                        write_header = not file_exists or os.path.getsize(log_file) == 0
+                        with open(log_file, mode='a', newline='', encoding='utf-8-sig') as f:
+                            writer = csv.writer(f)
+                            if write_header:
+                                writer.writerow(log_headers)
+                            writer.writerow(row)
 
 # Tarih aralığını ve durumu belirleyin
 # Sıralama yönü ve test modu UI'ları kaldırıldı, default DESC kullanılıyor
