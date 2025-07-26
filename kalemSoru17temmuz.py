@@ -1593,6 +1593,7 @@ def orijinal_isimle_degistir(themes, question_text):
 def process_data(start_date, end_date, status, size, orderByDirection):
     # Test ve sıralama yönü UI'ları kaldırıldı, test_modu ve siralama_secimi kullanılmıyor
     all_records_csv = 'all_records.csv'
+    from datetime import datetime
     daily_records_csv = f"{datetime.now().strftime('%Y-%m-%d')}.csv"
 
     # Normal mod
