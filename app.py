@@ -12,28 +12,18 @@ SUPPLIER_ID = st.secrets["SUPPLIER_ID"]
 st.title("Kalem Soru Analiz Uygulaması")
 
 
-# Soru metni
-soru_metni = st.text_area("Müşteri mesajını girin", height=150)
+try:
+    st.info("Analiz ediliyor (Trendylol API üzerinden)...")
+    json_cevap = ks17.analiz_fonksiyonu(None, "DESC", False, 1)
+    st.json(json_cevap)
 
-# Adet belirleme
-adet = st.number_input("Adet:", min_value=1, step=1, value=1)
-
-if st.button("Analiz Et"):
-    if not soru_metni.strip():
-        st.warning("Lütfen müşteri mesajını girin.")
+    # Onaylama
+    onay = st.radio("Bu yanıtı onaylıyor musunuz?", ("Evet", "Hayır", "Düzenle"))
+    if onay == "Evet":
+        st.success("Yanıt onaylandı.")
+    elif onay == "Hayır":
+        st.warning("Yanıt reddedildi.")
     else:
-        try:
-            st.info("Analiz ediliyor...")
-            json_cevap = ks17.analiz_fonksiyonu(soru_metni, "DESC", False, adet)
-            st.json(json_cevap)
-
-            # Onaylama
-            onay = st.radio("Bu yanıtı onaylıyor musunuz?", ("Evet", "Hayır", "Düzenle"))
-            if onay == "Evet":
-                st.success("Yanıt onaylandı.")
-            elif onay == "Hayır":
-                st.warning("Yanıt reddedildi.")
-            else:
-                st.info("Lütfen düzenleme yapınız.")
-        except Exception as e:
-            st.error(f"Hata: {str(e)}")
+        st.info("Lütfen düzenleme yapınız.")
+except Exception as e:
+    st.error(f"Hata: {str(e)}")
