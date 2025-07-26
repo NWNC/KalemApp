@@ -1,3 +1,5 @@
+import csv
+from datetime import datetime
 # Yardımcı fonksiyon: isim, sınıf ve okul numarasını birleştir (önce sınıf, sonra okul no, tekrar yok)
 def merge_name_class_school(isim, class_info, school_number):
     result = isim.strip()
